@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scattergories</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --text: #000000;
+      --border: #000000;
+      --muted: #666666;
+      --accent-bg: #f0f0f0;
+      --times-up-bg: #e8e8e8;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.4;
+    }
+
+    /* Screens */
+    .screen { display: none; flex: 1; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* Start screen */
+    .start-container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+      width: 100%;
+    }
+
+    .start-title {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.75rem;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+      color: var(--muted);
+    }
+
+    .saved-lists {
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .saved-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      gap: 0.5rem;
+    }
+
+    .saved-list-item:last-child { border-bottom: none; }
+
+    .saved-list-info { flex: 1; min-width: 0; }
+
+    .saved-list-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .saved-list-count {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .saved-list-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .empty-lists {
+      padding: 1.5rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.4rem;
+      color: var(--muted);
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      padding: 0.6rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+    }
+
+    .checkbox-row input { width: 1rem; height: 1rem; accent-color: var(--text); }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+      padding: 0.6rem 1.25rem;
+      transition: background 0.1s;
+    }
+
+    button:hover { background: var(--accent-bg); }
+    button:active { opacity: 0.85; }
+
+    .btn-primary {
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+    }
+
+    .btn-small {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.6rem;
+    }
+
+    .btn-danger:hover { background: var(--accent-bg); }
+
+    .error-message {
+      color: var(--text);
+      background: var(--accent-bg);
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.75rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .error-message.visible { display: block; }
+
+    /* Game screen grid */
+    .game-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 30% 55% 15%;
+      grid-template-rows: 1fr auto;
+      min-height: calc(100vh - 40px);
+    }
+
+    .left-column {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+
+    .panel {
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .panel-action {
+      font-size: 0.7rem;
+      text-transform: none;
+      letter-spacing: 0;
+      padding: 0.15rem 0.4rem;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+    }
+
+    .letter-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 180px;
+    }
+
+    .letter-display {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: clamp(5rem, 18vw, 10rem);
+      font-weight: 700;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .controls-row {
+      display: flex;
+      border-top: 1px solid var(--border);
+    }
+
+    .timer-panel,
+    .play-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .timer-panel { border-right: 1px solid var(--border); }
+
+    .timer-display,
+    .play-display {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100px;
+    }
+
+    .timer-display {
+      font-size: clamp(2.5rem, 8vw, 4.5rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .timer-panel.times-up {
+      background: var(--times-up-bg);
+    }
+
+    .timer-panel.times-up .timer-display {
+      font-size: clamp(1rem, 4vw, 1.5rem);
+      letter-spacing: 0.05em;
+    }
+
+    .play-btn {
+      width: 72px;
+      height: 72px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .play-btn:hover { background: var(--accent-bg); }
+
+    .play-icon {
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 14px 0 14px 24px;
+      border-color: transparent transparent transparent var(--text);
+      margin-left: 6px;
+    }
+
+    .pause-icon {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pause-icon span {
+      display: block;
+      width: 6px;
+      height: 28px;
+      background: var(--text);
+    }
+
+    /* Categories panel */
+    .categories-panel {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+
+    .categories-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .categories-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .categories-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .list-name-badge {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .add-category-btn {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      border: 1px solid var(--border);
+      background: transparent;
+    }
+
+    .category-count-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .count-btn {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      font-size: 1.1rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .count-display {
+      font-size: 0.85rem;
+      min-width: 1.5rem;
+      text-align: center;
+    }
+
+    .categories-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .category-row {
+      display: flex;
+      align-items: baseline;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      gap: 0.75rem;
+    }
+
+    .category-num {
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-width: 1.25rem;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .category-text {
+      font-size: 0.95rem;
+    }
+
+    /* Restart panel */
+    .restart-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      cursor: pointer;
+      user-select: none;
+      gap: 0.5rem;
+      transition: background 0.1s;
+    }
+
+    .restart-panel:hover { background: var(--accent-bg); }
+
+    .restart-icon {
+      width: 48px;
+      height: 48px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .restart-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.7rem;
+      min-height: 40px;
+      flex-shrink: 0;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.7rem;
+      text-decoration: underline;
+      color: var(--text);
+    }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-left: auto;
+    }
+
+    .color-dot {
+      width: 14px;
+      height: 14px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--text);
+    }
+
+    /* Modal overlay */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.visible { display: flex; }
+
+    .modal {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 1.25rem;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .modal h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1rem;
+    }
+
+    .modal-options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-option {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+    }
+
+    .modal-option.selected {
+      background: var(--accent-bg);
+      font-weight: 600;
+    }
+
+    .custom-timer-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .custom-timer-row input {
+      flex: 1;
+      width: auto;
+    }
+
+    .modal-close {
+      width: 100%;
+    }
+
+    .about-text {
+      font-size: 0.85rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    /* Mobile layout */
+    @media (max-width: 700px) {
+      .game-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+      }
+
+      .left-column { border-right: none; }
+
+      .controls-row { border-top: none; }
+
+      .timer-panel { border-right: none; border-bottom: 1px solid var(--border); }
+
+      .controls-row {
+        flex-direction: column;
+      }
+
+      .play-panel { border-bottom: 1px solid var(--border); }
+
+      .play-display { min-height: 80px; }
+
+      .play-btn {
+        width: 64px;
+        height: 64px;
+      }
+
+      .categories-panel { border-right: none; border-bottom: 1px solid var(--border); }
+
+      .restart-panel {
+        flex-direction: row;
+        justify-content: center;
+        padding: 1.25rem;
+        min-height: 72px;
+      }
+
+      .categories-header {
+        padding: 0.75rem;
+      }
+
+      .count-btn {
+        width: 36px;
+        height: 36px;
+      }
+
+      .btn-primary {
+        flex: 1;
+        min-height: 48px;
+      }
+
+      .saved-list-item {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Start Screen -->
+  <div id="startScreen" class="screen active">
+    <div class="start-container">
+      <h1 class="start-title">Scattergories</h1>
+
+      <p class="section-label">Saved Category Lists</p>
+      <div id="savedListsContainer" class="saved-lists">
+        <div class="empty-lists">No saved lists yet. Create one below.</div>
+      </div>
+
+      <p class="section-label">Create / Edit List</p>
+      <div id="startError" class="error-message"></div>
+
+      <div class="form-group">
+        <label for="listName">List Name</label>
+        <input type="text" id="listName" placeholder="My Category List">
+      </div>
+
+      <div class="form-group">
+        <label for="listCategories">Categories (one per line)</label>
+        <textarea id="listCategories" placeholder="Things in a kitchen
+Countries
+Animals
+Things you wear
+Movie titles
+Things at school
+Famous people
+Foods
+Sports
+Things that are expensive
+Places in a city
+Words with 6 letters"></textarea>
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="hardLetters">
+        <label for="hardLetters">Include hard letters Q, X, Z</label>
+      </div>
+
+      <div class="btn-row">
+        <button id="saveListBtn" class="btn-primary" onclick="saveList()">Save List</button>
+        <button id="cancelEditBtn" style="display:none" onclick="cancelEdit()">Cancel Edit</button>
+        <button id="startGameBtn" class="btn-primary" onclick="startGame()">Start Game</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Screen -->
+  <div id="gameScreen" class="screen">
+    <div class="game-grid">
+      <!-- Left column -->
+      <div class="left-column">
+        <div class="panel letter-panel">
+          <div class="panel-header">
+            <span>Letter</span>
+            <button class="panel-action" onclick="rerollLetter()">Re-roll</button>
+          </div>
+          <div id="letterDisplay" class="letter-display">A</div>
+        </div>
+        <div class="controls-row">
+          <div id="timerPanel" class="panel timer-panel">
+            <div class="panel-header">
+              <span>Time</span>
+              <button class="panel-action" onclick="openTimerModal()">Change</button>
+            </div>
+            <div id="timerDisplay" class="timer-display">120</div>
+          </div>
+          <div class="panel play-panel">
+            <div class="panel-header"><span>Play</span></div>
+            <div class="play-display">
+              <button id="playBtn" class="play-btn" onclick="togglePlayPause()" aria-label="Play">
+                <span id="playIcon" class="play-icon"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center: Categories -->
+      <div class="categories-panel">
+        <div class="categories-header">
+          <div class="categories-header-left">
+            <span class="categories-title">Categories</span>
+            <button class="add-category-btn" onclick="promptAddCategory()">Add A Category</button>
+            <span id="currentListName" class="list-name-badge"></span>
+          </div>
+          <div class="category-count-controls">
+            <button class="count-btn" onclick="decreaseCategoryCount()" aria-label="Fewer categories">−</button>
+            <span id="categoryCountDisplay" class="count-display">12</span>
+            <button class="count-btn" onclick="increaseCategoryCount()" aria-label="More categories">+</button>
+          </div>
+        </div>
+        <div id="categoriesList" class="categories-list"></div>
+      </div>
+
+      <!-- Right: Restart -->
+      <div class="restart-panel" onclick="generateRound()" role="button" tabindex="0" aria-label="Restart">
+        <div class="restart-icon">↻</div>
+        <span class="restart-label">Restart</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer (shared) -->
+  <footer class="footer">
+    <div class="footer-left">
+      <span>Scattergories List Generator</span>
+      <button class="footer-link" onclick="openAboutModal()">About</button>
+      <button class="footer-link" onclick="openPlayOnlineModal()">Play This Game Online</button>
+    </div>
+    <div class="footer-right">
+      <span class="color-dot"></span>
+      <button class="footer-link" onclick="changeTheme()">Change Colors</button>
+    </div>
+  </footer>
+
+  <!-- Timer modal -->
+  <div id="timerModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'timerModal')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Select Timer</h3>
+      <div class="modal-options" id="timerOptions">
+        <button class="modal-option" data-seconds="60" onclick="selectTimerOption(60)">60 seconds</button>
+        <button class="modal-option" data-seconds="120" onclick="selectTimerOption(120)">120 seconds</button>
+        <button class="modal-option" data-seconds="180" onclick="selectTimerOption(180)">180 seconds</button>
+        <button class="modal-option" data-seconds="300" onclick="selectTimerOption(300)">300 seconds</button>
+        <button class="modal-option" id="customTimerOption" onclick="selectCustomTimerOption()">Custom seconds</button>
+      </div>
+      <div id="customTimerRow" class="custom-timer-row" style="display:none">
+        <input type="number" id="customTimerInput" min="1" max="3600" placeholder="Seconds">
+        <button onclick="applyCustomTimer()">Set</button>
+      </div>
+      <button class="modal-close btn-small" onclick="closeTimerModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- About modal -->
+  <div id="aboutModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'aboutModal')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>About</h3>
+      <p class="about-text">
+        A minimal Scattergories list generator. Create custom category lists,
+        roll a random letter, and start the timer. No accounts, no backend —
+        everything is stored locally in your browser.
+      </p>
+      <button class="modal-close btn-small" onclick="closeAboutModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Play online modal -->
+  <div id="playOnlineModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'playOnlineModal')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Play This Game Online</h3>
+      <p class="about-text">
+        Open this HTML file in any modern browser to play. Share the file with
+        friends or host it on any static file server — no installation required.
+      </p>
+      <button class="modal-close btn-small" onclick="closePlayOnlineModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Add category modal -->
+  <div id="addCategoryModal" class="modal-overlay" onclick="closeModalOnOverlay(event, 'addCategoryModal')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>Add Category</h3>
+      <div class="form-group">
+        <input type="text" id="newCategoryInput" placeholder="New category name">
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="addCategoryDuringGame()">Add</button>
+        <button onclick="closeAddCategoryModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Constants & Storage Keys ───────────────────────────────────────────
+    const STORAGE_KEYS = {
+      lists: 'scattergories_lists',
+      theme: 'scattergories_theme',
+      timer: 'scattergories_timer',
+      hardLetters: 'scattergories_hard_letters'
+    };
+
+    const EASY_LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWY'.split('');
+    const ALL_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const HARD_LETTERS = ['Q', 'X', 'Z'];
+
+    const THEMES = [
+      { name: 'light', bg: '#ffffff', text: '#000000', muted: '#666666', accent: '#f0f0f0', timesUp: '#e8e8e8' },
+      { name: 'dark', bg: '#000000', text: '#ffffff', muted: '#aaaaaa', accent: '#222222', timesUp: '#333333' },
+      { name: 'cream', bg: '#f5f0e8', text: '#2c2416', muted: '#7a6f5e', accent: '#ebe4d8', timesUp: '#ddd5c8' }
+    ];
+
+    const DEFAULT_TIMER = 120;
+    const DEFAULT_CATEGORY_COUNT = 12;
+    const MIN_CATEGORY_COUNT = 3;
+
+    // ─── State ──────────────────────────────────────────────────────────────
+    let categoryLists = [];
+    let editingListId = null;
+    let currentThemeIndex = 0;
+
+    // Game state
+    let currentList = null;
+    let currentLetter = '';
+    let shownCategories = [];
+    let categoryShowCount = DEFAULT_CATEGORY_COUNT;
+    let timerSeconds = DEFAULT_TIMER;
+    let timerRemaining = DEFAULT_TIMER;
+    let timerInterval = null;
+    let timerRunning = false;
+    let includeHardLetters = false;
+    let lastListId = null;
+    let lastLetter = '';
+
+    // ─── Init ───────────────────────────────────────────────────────────────
+    function init() {
+      loadFromStorage();
+      renderSavedLists();
+      applyTheme(currentThemeIndex, false);
+      document.getElementById('hardLetters').checked = includeHardLetters;
+      document.getElementById('hardLetters').addEventListener('change', (e) => {
+        includeHardLetters = e.target.checked;
+        localStorage.setItem(STORAGE_KEYS.hardLetters, includeHardLetters);
+      });
+    }
+
+    function loadFromStorage() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEYS.lists);
+        categoryLists = saved ? JSON.parse(saved) : [];
+      } catch {
+        categoryLists = [];
+      }
+
+      const theme = localStorage.getItem(STORAGE_KEYS.theme);
+      if (theme !== null) {
+        const idx = THEMES.findIndex(t => t.name === theme);
+        if (idx >= 0) currentThemeIndex = idx;
+      }
+
+      const timer = localStorage.getItem(STORAGE_KEYS.timer);
+      if (timer !== null) {
+        timerSeconds = parseInt(timer, 10) || DEFAULT_TIMER;
+        timerRemaining = timerSeconds;
+      }
+
+      includeHardLetters = localStorage.getItem(STORAGE_KEYS.hardLetters) === 'true';
+    }
+
+    // ─── Start Screen ─────────────────────────────────────────────────────────
+    function showStartError(msg) {
+      const el = document.getElementById('startError');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideStartError() {
+      document.getElementById('startError').classList.remove('visible');
+    }
+
+    function parseCategories(text) {
+      return text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+    }
+
+    function renderSavedLists() {
+      const container = document.getElementById('savedListsContainer');
+      if (categoryLists.length === 0) {
+        container.innerHTML = '<div class="empty-lists">No saved lists yet. Create one below.</div>';
+        return;
+      }
+
+      container.innerHTML = categoryLists.map(list => `
+        <div class="saved-list-item">
+          <div class="saved-list-info">
+            <div class="saved-list-name">${escapeHtml(list.name)}</div>
+            <div class="saved-list-count">${list.categories.length} categories</div>
+          </div>
+          <div class="saved-list-actions">
+            <button class="btn-small" onclick="editList('${list.id}')">Edit</button>
+            <button class="btn-small btn-danger" onclick="deleteList('${list.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function saveList() {
+      hideStartError();
+      const name = document.getElementById('listName').value.trim();
+      const categories = parseCategories(document.getElementById('listCategories').value);
+
+      if (!name) {
+        showStartError('Please enter a list name.');
+        return;
+      }
+      if (categories.length < MIN_CATEGORY_COUNT) {
+        showStartError(`Please enter at least ${MIN_CATEGORY_COUNT} categories (one per line).`);
+        return;
+      }
+
+      if (editingListId) {
+        const idx = categoryLists.findIndex(l => l.id === editingListId);
+        if (idx >= 0) {
+          categoryLists[idx] = { ...categoryLists[idx], name, categories };
+        }
+        cancelEdit();
+      } else {
+        categoryLists.push({
+          id: generateId(),
+          name,
+          categories
+        });
+      }
+
+      persistLists();
+      renderSavedLists();
+      clearForm();
+    }
+
+    function deleteList(id) {
+      if (!confirm('Delete this list?')) return;
+      categoryLists = categoryLists.filter(l => l.id !== id);
+      if (editingListId === id) cancelEdit();
+      persistLists();
+      renderSavedLists();
+    }
+
+    function editList(id) {
+      const list = categoryLists.find(l => l.id === id);
+      if (!list) return;
+
+      editingListId = id;
+      document.getElementById('listName').value = list.name;
+      document.getElementById('listCategories').value = list.categories.join('\n');
+      document.getElementById('cancelEditBtn').style.display = '';
+      document.getElementById('saveListBtn').textContent = 'Update List';
+      hideStartError();
+      document.getElementById('listName').focus();
+    }
+
+    function cancelEdit() {
+      editingListId = null;
+      document.getElementById('cancelEditBtn').style.display = 'none';
+      document.getElementById('saveListBtn').textContent = 'Save List';
+      clearForm();
+    }
+
+    function clearForm() {
+      document.getElementById('listName').value = '';
+      document.getElementById('listCategories').value = '';
+    }
+
+    function persistLists() {
+      localStorage.setItem(STORAGE_KEYS.lists, JSON.stringify(categoryLists));
+    }
+
+    // ─── Game Flow ────────────────────────────────────────────────────────────
+    function startGame() {
+      hideStartError();
+      if (categoryLists.length === 0) {
+        showStartError('Create at least one category list before starting.');
+        return;
+      }
+
+      includeHardLetters = document.getElementById('hardLetters').checked;
+      localStorage.setItem(STORAGE_KEYS.hardLetters, includeHardLetters);
+
+      categoryShowCount = DEFAULT_CATEGORY_COUNT;
+      timerRemaining = timerSeconds;
+      pauseTimer();
+      resetTimerDisplay();
+
+      generateRound();
+      showScreen('gameScreen');
+    }
+
+    function generateRound() {
+      pauseTimer();
+
+      // Pick a random list, avoiding immediate repeat of same list+letter combo
+      let attempts = 0;
+      let list, letter;
+      do {
+        list = categoryLists[Math.floor(Math.random() * categoryLists.length)];
+        letter = pickRandomLetter();
+        attempts++;
+      } while (
+        attempts < 20 &&
+        categoryLists.length > 1 &&
+        list.id === lastListId &&
+        letter === lastLetter
+      );
+
+      lastListId = list.id;
+      lastLetter = letter;
+      currentList = list;
+      currentLetter = letter;
+
+      // Reset category count cap based on list length
+      const maxShow = list.categories.length;
+      if (categoryShowCount > maxShow) categoryShowCount = maxShow;
+      if (categoryShowCount < MIN_CATEGORY_COUNT) {
+        categoryShowCount = Math.min(MIN_CATEGORY_COUNT, maxShow);
+      }
+
+      shownCategories = pickRandomCategories(list.categories, categoryShowCount);
+
+      resetTimer();
+      updateLetterDisplay();
+      renderCategories();
+      clearTimesUp();
+    }
+
+    function pickRandomLetter() {
+      const pool = includeHardLetters ? ALL_LETTERS : EASY_LETTERS;
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function rerollLetter() {
+      currentLetter = pickRandomLetter();
+      lastLetter = currentLetter;
+      updateLetterDisplay();
+    }
+
+    function pickRandomCategories(allCategories, count) {
+      const shuffled = shuffleArray([...allCategories]);
+      return shuffled.slice(0, Math.min(count, shuffled.length));
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function renderCategories() {
+      const container = document.getElementById('categoriesList');
+      const countEl = document.getElementById('categoryCountDisplay');
+      const listNameEl = document.getElementById('currentListName');
+
+      countEl.textContent = shownCategories.length;
+      listNameEl.textContent = currentList ? `— ${currentList.name}` : '';
+
+      container.innerHTML = shownCategories.map((cat, i) => `
+        <div class="category-row">
+          <span class="category-num">${i + 1}.</span>
+          <span class="category-text">${escapeHtml(cat)}</span>
+        </div>
+      `).join('');
+    }
+
+    function increaseCategoryCount() {
+      if (!currentList) return;
+      const max = currentList.categories.length;
+      if (shownCategories.length >= max) return;
+
+      categoryShowCount = Math.min(shownCategories.length + 1, max);
+      // Re-pick categories with new count
+      shownCategories = pickRandomCategories(currentList.categories, categoryShowCount);
+      renderCategories();
+    }
+
+    function decreaseCategoryCount() {
+      if (shownCategories.length <= MIN_CATEGORY_COUNT) return;
+      categoryShowCount = shownCategories.length - 1;
+      shownCategories = pickRandomCategories(currentList.categories, categoryShowCount);
+      renderCategories();
+    }
+
+    function promptAddCategory() {
+      document.getElementById('newCategoryInput').value = '';
+      document.getElementById('addCategoryModal').classList.add('visible');
+      setTimeout(() => document.getElementById('newCategoryInput').focus(), 50);
+    }
+
+    function addCategoryDuringGame() {
+      const name = document.getElementById('newCategoryInput').value.trim();
+      if (!name || !currentList) return;
+
+      // Add to the current list in storage
+      currentList.categories.push(name);
+      const idx = categoryLists.findIndex(l => l.id === currentList.id);
+      if (idx >= 0) categoryLists[idx] = currentList;
+      persistLists();
+
+      // Show immediately if there is room in the current display count
+      if (shownCategories.length < categoryShowCount) {
+        shownCategories.push(name);
+      }
+
+      renderCategories();
+      closeAddCategoryModal();
+    }
+
+    // ─── Timer ────────────────────────────────────────────────────────────────
+    function formatTimerDisplay(seconds) {
+      return String(seconds);
+    }
+
+    function updateTimerDisplay() {
+      document.getElementById('timerDisplay').textContent = formatTimerDisplay(timerRemaining);
+    }
+
+    function resetTimerDisplay() {
+      document.getElementById('timerDisplay').textContent = formatTimerDisplay(timerRemaining);
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      timerRemaining = timerSeconds;
+      resetTimerDisplay();
+      clearTimesUp();
+      updatePlayButton(false);
+    }
+
+    function startTimer() {
+      if (timerRunning) return;
+      if (timerRemaining <= 0) {
+        timerRemaining = timerSeconds;
+        clearTimesUp();
+      }
+
+      timerRunning = true;
+      updatePlayButton(true);
+
+      timerInterval = setInterval(() => {
+        timerRemaining--;
+        updateTimerDisplay();
+
+        if (timerRemaining <= 0) {
+          pauseTimer();
+          showTimesUp();
+          playBeep();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      timerRunning = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      updatePlayButton(false);
+    }
+
+    function togglePlayPause() {
+      if (timerRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    }
+
+    function showTimesUp() {
+      const panel = document.getElementById('timerPanel');
+      panel.classList.add('times-up');
+      document.getElementById('timerDisplay').textContent = "TIME'S UP";
+    }
+
+    function clearTimesUp() {
+      document.getElementById('timerPanel').classList.remove('times-up');
+    }
+
+    function updatePlayButton(isPlaying) {
+      const icon = document.getElementById('playIcon');
+      const btn = document.getElementById('playBtn');
+      if (isPlaying) {
+        icon.className = 'pause-icon';
+        icon.innerHTML = '<span></span><span></span>';
+        btn.setAttribute('aria-label', 'Pause');
+      } else {
+        icon.className = 'play-icon';
+        icon.innerHTML = '';
+        btn.setAttribute('aria-label', 'Play');
+      }
+    }
+
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 440;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+      } catch {
+        // Audio not available — silently ignore
+      }
+    }
+
+    // ─── Timer Modal ──────────────────────────────────────────────────────────
+    function openTimerModal() {
+      pauseTimer();
+      highlightSelectedTimer();
+      document.getElementById('timerModal').classList.add('visible');
+    }
+
+    function closeTimerModal() {
+      document.getElementById('timerModal').classList.remove('visible');
+      document.getElementById('customTimerRow').style.display = 'none';
+    }
+
+    function highlightSelectedTimer() {
+      document.querySelectorAll('#timerOptions .modal-option').forEach(btn => {
+        const sec = parseInt(btn.dataset.seconds, 10);
+        btn.classList.toggle('selected', sec === timerSeconds);
+      });
+      document.getElementById('customTimerOption').classList.remove('selected');
+    }
+
+    function selectTimerOption(seconds) {
+      changeTimer(seconds);
+      closeTimerModal();
+    }
+
+    function selectCustomTimerOption() {
+      document.getElementById('customTimerRow').style.display = 'flex';
+      document.querySelectorAll('#timerOptions .modal-option').forEach(b => b.classList.remove('selected'));
+      document.getElementById('customTimerOption').classList.add('selected');
+      document.getElementById('customTimerInput').focus();
+    }
+
+    function applyCustomTimer() {
+      const val = parseInt(document.getElementById('customTimerInput').value, 10);
+      if (!val || val < 1) return;
+      changeTimer(val);
+      closeTimerModal();
+    }
+
+    function changeTimer(seconds) {
+      timerSeconds = seconds;
+      timerRemaining = seconds;
+      localStorage.setItem(STORAGE_KEYS.timer, timerSeconds);
+      resetTimerDisplay();
+      clearTimesUp();
+    }
+
+    // ─── Theme ───────────────────────────────────────────────────────────────
+    function changeTheme() {
+      currentThemeIndex = (currentThemeIndex + 1) % THEMES.length;
+      applyTheme(currentThemeIndex, true);
+    }
+
+    function applyTheme(index, persist) {
+      const theme = THEMES[index];
+      const root = document.documentElement;
+      root.style.setProperty('--bg', theme.bg);
+      root.style.setProperty('--text', theme.text);
+      root.style.setProperty('--border', theme.text);
+      root.style.setProperty('--muted', theme.muted);
+      root.style.setProperty('--accent-bg', theme.accent);
+      root.style.setProperty('--times-up-bg', theme.timesUp);
+      if (persist) {
+        localStorage.setItem(STORAGE_KEYS.theme, theme.name);
+      }
+    }
+
+    // ─── Modals ──────────────────────────────────────────────────────────────
+    function openAboutModal() {
+      document.getElementById('aboutModal').classList.add('visible');
+    }
+
+    function closeAboutModal() {
+      document.getElementById('aboutModal').classList.remove('visible');
+    }
+
+    function openPlayOnlineModal() {
+      document.getElementById('playOnlineModal').classList.add('visible');
+    }
+
+    function closePlayOnlineModal() {
+      document.getElementById('playOnlineModal').classList.remove('visible');
+    }
+
+    function closeAddCategoryModal() {
+      document.getElementById('addCategoryModal').classList.remove('visible');
+    }
+
+    function closeModalOnOverlay(event, modalId) {
+      if (event.target.id === modalId) {
+        document.getElementById(modalId).classList.remove('visible');
+      }
+    }
+
+    // ─── Utilities ───────────────────────────────────────────────────────────
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Keyboard: Enter in add category modal
+    document.getElementById('newCategoryInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addCategoryDuringGame();
+    });
+
+    // Restart panel keyboard support
+    document.querySelector('.restart-panel').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        generateRound();
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
