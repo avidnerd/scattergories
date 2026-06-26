@@ -649,6 +649,11 @@ Words with 6 letters"></textarea>
         <label for="hardLetters">Include hard letters Q, X, Z</label>
       </div>
 
+      <div class="form-group">
+        <label for="letterPool">Letter Pool</label>
+        <input type="text" id="letterPool" placeholder="A B C D E F G">
+      </div>
+
       <div class="btn-row">
         <button id="saveListBtn" class="btn-primary" onclick="saveList()">Save List</button>
         <button id="cancelEditBtn" style="display:none" onclick="cancelEdit()">Cancel Edit</button>
@@ -790,7 +795,8 @@ Words with 6 letters"></textarea>
       lists: 'scattergories_lists',
       theme: 'scattergories_theme',
       timer: 'scattergories_timer',
-      hardLetters: 'scattergories_hard_letters'
+      hardLetters: 'scattergories_hard_letters',
+      letterPool: 'scattergories_letter_pool'
     };
 
     const EASY_LETTERS = 'ABCDEFGHIJKLMNOPRSTUVWY'.split('');
@@ -824,6 +830,7 @@ Words with 6 letters"></textarea>
     let timerInterval = null;
     let timerRunning = false;
     let includeHardLetters = false;
+    let customLetterPool = [];
     let lastListId = null;
     let lastLetter = '';
 
@@ -833,9 +840,13 @@ Words with 6 letters"></textarea>
       renderSavedLists();
       applyTheme(currentThemeIndex, false);
       document.getElementById('hardLetters').checked = includeHardLetters;
+      document.getElementById('letterPool').value = localStorage.getItem(STORAGE_KEYS.letterPool) || '';
       document.getElementById('hardLetters').addEventListener('change', (e) => {
         includeHardLetters = e.target.checked;
         localStorage.setItem(STORAGE_KEYS.hardLetters, includeHardLetters);
+      });
+      document.getElementById('letterPool').addEventListener('input', (e) => {
+        localStorage.setItem(STORAGE_KEYS.letterPool, e.target.value);
       });
     }
 
@@ -878,6 +889,10 @@ Words with 6 letters"></textarea>
         .split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
+    }
+
+    function parseLetterPool(text) {
+      return [...new Set((text.toUpperCase().match(/[A-Z]/g) || []))];
     }
 
     function renderSavedLists() {
@@ -1002,6 +1017,14 @@ Words with 6 letters"></textarea>
       includeHardLetters = document.getElementById('hardLetters').checked;
       localStorage.setItem(STORAGE_KEYS.hardLetters, includeHardLetters);
 
+      const letterPoolText = document.getElementById('letterPool').value;
+      customLetterPool = parseLetterPool(letterPoolText);
+      if (letterPoolText.trim() && customLetterPool.length === 0) {
+        showStartError('Enter at least one letter from A to Z.');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEYS.letterPool, letterPoolText);
+
       categoryShowCount = DEFAULT_CATEGORY_COUNT;
       timerRemaining = timerSeconds;
       pauseTimer();
@@ -1050,7 +1073,9 @@ Words with 6 letters"></textarea>
     }
 
     function pickRandomLetter() {
-      const pool = includeHardLetters ? ALL_LETTERS : EASY_LETTERS;
+      const pool = customLetterPool.length > 0
+        ? customLetterPool
+        : includeHardLetters ? ALL_LETTERS : EASY_LETTERS;
       return pool[Math.floor(Math.random() * pool.length)];
     }
 
