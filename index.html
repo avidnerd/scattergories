@@ -401,6 +401,14 @@
       font-size: 0.95rem;
     }
 
+    .category-placeholder {
+      display: block;
+      width: min(14rem, 70%);
+      height: 1em;
+      background: var(--accent-bg);
+      border: 1px solid var(--border);
+    }
+
     /* Restart panel */
     .restart-panel {
       display: flex;
@@ -805,9 +813,11 @@ Words with 6 letters"></textarea>
     let currentThemeIndex = 0;
 
     // Game state
+    let gameLists = [];
     let currentList = null;
     let currentLetter = '';
     let shownCategories = [];
+    let categoriesRevealed = false;
     let categoryShowCount = DEFAULT_CATEGORY_COUNT;
     let timerSeconds = DEFAULT_TIMER;
     let timerRemaining = DEFAULT_TIMER;
@@ -962,10 +972,30 @@ Words with 6 letters"></textarea>
     }
 
     // ─── Game Flow ────────────────────────────────────────────────────────────
+    function getFormGameList() {
+      const name = document.getElementById('listName').value.trim() || 'Custom List';
+      const categories = parseCategories(document.getElementById('listCategories').value);
+      if (categories.length === 0) return null;
+
+      return {
+        id: editingListId || 'draft-list',
+        name,
+        categories
+      };
+    }
+
     function startGame() {
       hideStartError();
-      if (categoryLists.length === 0) {
-        showStartError('Create at least one category list before starting.');
+
+      const formList = getFormGameList();
+      if (formList && formList.categories.length < MIN_CATEGORY_COUNT) {
+        showStartError(`Please enter at least ${MIN_CATEGORY_COUNT} categories (one per line).`);
+        return;
+      }
+
+      gameLists = formList ? [formList] : [...categoryLists];
+      if (gameLists.length === 0) {
+        showStartError('Enter categories or save a category list before starting.');
         return;
       }
 
@@ -988,12 +1018,12 @@ Words with 6 letters"></textarea>
       let attempts = 0;
       let list, letter;
       do {
-        list = categoryLists[Math.floor(Math.random() * categoryLists.length)];
+        list = gameLists[Math.floor(Math.random() * gameLists.length)];
         letter = pickRandomLetter();
         attempts++;
       } while (
         attempts < 20 &&
-        categoryLists.length > 1 &&
+        gameLists.length > 1 &&
         list.id === lastListId &&
         letter === lastLetter
       );
@@ -1011,6 +1041,7 @@ Words with 6 letters"></textarea>
       }
 
       shownCategories = pickRandomCategories(list.categories, categoryShowCount);
+      categoriesRevealed = false;
 
       resetTimer();
       updateLetterDisplay();
@@ -1021,6 +1052,10 @@ Words with 6 letters"></textarea>
     function pickRandomLetter() {
       const pool = includeHardLetters ? ALL_LETTERS : EASY_LETTERS;
       return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function updateLetterDisplay() {
+      document.getElementById('letterDisplay').textContent = currentLetter;
     }
 
     function rerollLetter() {
@@ -1049,6 +1084,16 @@ Words with 6 letters"></textarea>
 
       countEl.textContent = shownCategories.length;
       listNameEl.textContent = currentList ? `— ${currentList.name}` : '';
+
+      if (!categoriesRevealed) {
+        container.innerHTML = shownCategories.map((_, i) => `
+          <div class="category-row">
+            <span class="category-num">${i + 1}.</span>
+            <span class="category-text category-placeholder" aria-label="Hidden category"></span>
+          </div>
+        `).join('');
+        return;
+      }
 
       container.innerHTML = shownCategories.map((cat, i) => `
         <div class="category-row">
@@ -1122,6 +1167,12 @@ Words with 6 letters"></textarea>
       updatePlayButton(false);
     }
 
+    function revealCategories() {
+      if (categoriesRevealed) return;
+      categoriesRevealed = true;
+      renderCategories();
+    }
+
     function startTimer() {
       if (timerRunning) return;
       if (timerRemaining <= 0) {
@@ -1129,6 +1180,7 @@ Words with 6 letters"></textarea>
         clearTimesUp();
       }
 
+      revealCategories();
       timerRunning = true;
       updatePlayButton(true);
 
